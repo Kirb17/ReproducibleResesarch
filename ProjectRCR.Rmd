@@ -1,0 +1,144 @@
+---
+title: "RcRproject"
+author: "Tony Yun"
+date: "2025-02-17"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r}
+zip_path = "/mnt/data/repdata_data_activity.zip"
+extract_path = "/mnt/data/activity_data"
+```
+# Load necessary libraries
+``` {r}
+
+library(ggplot2)
+library(dplyr)
+```
+# Load the data
+``` {r}
+
+activity <- read.csv("C:/Users/tonyp/Downloads/repdata_data_activity/activity.csv")
+View(activity)
+```
+# Convert date column to Date format
+``` {r}
+
+activity$date <- as.Date(activity$date)
+```
+# Calculate total number of steps per day
+``` {r}
+
+total_steps_per_day <- activity %>%
+  group_by(date) %>%
+  summarise(total_steps = sum(steps, na.rm = TRUE))
+```
+# Plot histogram of total steps per day
+```{r}
+ggplot(total_steps_per_day, aes(x = total_steps)) +
+  geom_histogram(binwidth = 1000, fill = "blue", alpha = 0.7) +
+  labs(title = "Histogram of Total Steps per Day",
+       x = "Total Steps",
+       y = "Frequency")
+```
+# Calculate and report mean and median total steps per day
+``` {r}
+mean_steps <- mean(total_steps_per_day$total_steps, na.rm = TRUE)
+median_steps <- median(total_steps_per_day$total_steps, na.rm = TRUE)
+print(paste("Mean steps per day:", mean_steps))
+print(paste("Median total steps per day:", median_steps))
+```
+# Average daily activity pattern
+``` {r}
+avg_steps_per_interval <- activity %>%
+  group_by(interval) %>%
+  summarise(avg_steps = mean(steps, na.rm = TRUE))
+```
+
+# Time series plot of 5-minute intervals
+``` {r}
+ggplot(avg_steps_per_interval, aes(x = interval, y = avg_steps)) +
+  geom_line(color = "blue") +
+  labs(title = "Average Daily Activity Pattern",
+       x = "5-Minute Interval",
+       y = "Average Steps")
+```
+
+# Find interval with maximum average steps
+``` {r}
+max_interval <- avg_steps_per_interval$interval[which.max(avg_steps_per_interval$avg_steps)]
+print(paste("Interval with maximum average steps:", max_interval))
+```
+
+# Count total missing values
+``` {r}
+
+missing_values <- sum(is.na(activity$steps))
+print(paste("Total missing values:", missing_values))
+```
+
+# Fill missing values with mean of respective interval
+``` {r}
+filled_activity_data <- activity
+for (i in 1:nrow(filled_activity_data)) {
+  if (is.na(filled_activity_data$steps[i])) {
+    filled_activity_data$steps[i] <- avg_steps_per_interval$avg_steps[avg_steps_per_interval$interval == filled_activity_data$interval[i]]
+  }
+}
+```
+
+# Histogram after filling missing values
+```{r}
+total_steps_filled <- filled_activity_data %>%
+  group_by(date) %>%
+  summarise(total_steps = sum(steps))
+
+ggplot(total_steps_filled, aes(x = total_steps)) +
+  geom_histogram(binwidth = 1000, fill = "green", alpha = 0.7) +
+  labs(title = "Histogram of Total Steps per Day (Imputed Data)",
+       x = "Total Steps",
+       y = "Frequency")
+```
+
+# Compare mean and median after imputation
+``` {r}
+mean_steps_filled <- mean(total_steps_filled$total_steps)
+median_steps_filled <- median(total_steps_filled$total_steps)
+print(paste("Mean after imputing missing values:", mean_steps_filled))
+print(paste("Median after imputing missing values:", median_steps_filled))
+```
+
+# Weekday vs. Weekend activity pattern
+``` {r}
+filled_activity_data$day_type <- ifelse(weekdays(filled_activity_data$date) %in% c("Saturday", "Sunday"), "Weekend", "Weekday")
+```
+
+# Compute average steps for each interval by weekday/weekend
+``` {r}
+avg_steps_weekday_weekend <- filled_activity_data %>%
+  group_by(interval, day_type) %>%
+  summarise(avg_steps = mean(steps))
+```
+
+# Panel plot of weekday vs weekend activity patterns
+```{r}
+ggplot(avg_steps_weekday_weekend, aes(x = interval, y = avg_steps, color = day_type)) +
+  geom_line() +
+  facet_wrap(~ day_type, ncol = 1) +
+  labs(title = "Weekday vs Weekend Activity Patterns",
+       x = "5-Minute Interval",
+       y = "Average Steps")
+
+
+```
+
